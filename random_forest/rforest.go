@@ -204,7 +204,7 @@ func genLeafNode(labels []string) *TreeNode {
 	return node
 }
 
-func predicate(node *TreeNode, input []interface{}) map[string]int {
+func Predicate(node *TreeNode, input []interface{}) map[string]int {
 	if node.Labels != nil { //leaf node
 		return node.Labels
 	}
@@ -215,15 +215,15 @@ func predicate(node *TreeNode, input []interface{}) map[string]int {
 	switch value.(type) {
 	case float64:
 		if value.(float64) <= node.Value.(float64) && node.Left != nil {
-			return predicate(node.Left, input)
+			return Predicate(node.Left, input)
 		} else if node.Right != nil {
-			return predicate(node.Right, input)
+			return Predicate(node.Right, input)
 		}
 	case string:
 		if value == node.Value && node.Left != nil {
-			return predicate(node.Left, input)
+			return Predicate(node.Left, input)
 		} else if node.Right != nil {
-			return predicate(node.Right, input)
+			return Predicate(node.Right, input)
 		}
 	}
 	return nil
@@ -244,7 +244,7 @@ func BuildTree(inputs [][]interface{}, labels []string, samples_count, selected_
 }
 
 func PredicateTree(tree *Tree, input []interface{}) map[string]int {
-	return predicate(tree.Root, input)
+	return Predicate(tree.Root, input)
 }
 
 // Random Forest Implementation
@@ -262,11 +262,9 @@ func BuildForest(inputs [][]interface{}, labels []string, treesAmount, samplesAm
 	mutex := &sync.Mutex{}
 	for i := 0; i < treesAmount; i++ {
 		go func(x int) {
-			fmt.Printf(">> Buiding %vth tree...\n", x)
 			forest.Trees[x] = BuildTree(inputs, labels, samplesAmount, selectedFeatureAmount)
 			mutex.Lock()
 			prog_counter += 1
-			fmt.Printf(">> Tranning progress %.0f%%\n", float64(prog_counter)/float64(treesAmount)*100)
 			mutex.Unlock()
 			done_flag <- true
 		}(i)

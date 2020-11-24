@@ -5,27 +5,34 @@ import (
 	"fmt"
 	"log"
 	"net"
+
+	"../entities"
 )
 
-const localAddr = "localhost:8004" // su propia IP aquí
+var Prediction int = -1
+
 const (
-	cnum = iota // iota genera valores en secuencia y se reinicia en cada bloque const
-	opa  = 1
-	opb  = 0
+	Cnum = iota
+	Opa  = 1
+	Opb  = 0
 )
 
 type Tmsg struct {
-	Code int
-	Addr string
-	Op   int
+	Code    int
+	Addr    string
+	Op      int
+	Pacient entities.Pacient
 }
 
-// Las IP de los demás participantes acá, todos deberían usar el puerto 8000
-var addrs = []string{"localhost:8001", "localhost:8002", "localhost:8003"}
+var LocalAddr string = "192.168.0.7:8100"
+
+var Addrs = []string{
+	"192.168.0.7:8200",
+}
 
 var chInfo chan map[string]int
 
-func GoServer() {
+func GoSV() {
 
 	chInfo = make(chan map[string]int)
 
@@ -36,11 +43,11 @@ func GoServer() {
 }
 
 func server() {
-	if ln, err := net.Listen("tcp", localAddr); err != nil {
-		log.Panicln("Can't start listener on", localAddr)
+	if ln, err := net.Listen("tcp", LocalAddr); err != nil {
+		log.Panicln("Can't start listener on", LocalAddr)
 	} else {
 		defer ln.Close()
-		fmt.Println("Listeing on", localAddr)
+		fmt.Println("Listeing on", LocalAddr)
 		for {
 			if conn, err := ln.Accept(); err != nil {
 				log.Println("Can't accept", conn.RemoteAddr())
@@ -59,7 +66,7 @@ func handle(conn net.Conn) {
 	} else {
 		fmt.Println(msg)
 		switch msg.Code {
-		case cnum:
+		case Cnum:
 			concensus(conn, msg)
 		}
 	}
@@ -68,26 +75,27 @@ func handle(conn net.Conn) {
 func concensus(conn net.Conn, msg Tmsg) {
 	info := <-chInfo
 	info[msg.Addr] = msg.Op
-	if len(info) == len(addrs) {
+	fmt.Println(info)
+	if len(info) == len(Addrs) {
 		ca, cb := 0, 0
 		for _, op := range info {
-			if op == opa {
+			if op == Opa {
 				ca++
 			} else {
 				cb++
 			}
 		}
 		if ca > cb {
-			fmt.Println("GO A!")
+			Prediction = 1
 		} else {
-			fmt.Println("GO B!")
+			Prediction = 0
 		}
 		info = map[string]int{}
 	}
 	go func() { chInfo <- info }()
 }
 
-func send(remoteAddr string, msg Tmsg) {
+func Send(remoteAddr string, msg Tmsg) {
 
 	if conn, err := net.Dial("tcp", remoteAddr); err != nil {
 		log.Println("Can't dial", remoteAddr, err)
